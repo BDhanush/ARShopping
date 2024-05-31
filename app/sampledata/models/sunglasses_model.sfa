@@ -1,0 +1,99 @@
+{
+  animations: [
+    {
+      path: 'sampledata/models/sunglasses_model.fbx',
+    },
+  ],
+  materials: [
+    {
+      name: 'black_plastic',
+      parameters: [
+        {
+          baseColor: [
+            0.017387,
+            0.017387,
+            0.017387,
+            1,
+          ],
+        },
+        {
+          baseColorMap: null,
+        },
+        {
+          normalMap: null,
+        },
+        {
+          interpolatedColor: null,
+        },
+        {
+          metallic: 0,
+        },
+        {
+          metallicMap: null,
+        },
+        {
+          roughness: 1,
+        },
+        {
+          roughnessMap: null,
+        },
+        {
+          opacity: null,
+        },
+      ],
+      source: 'build/sceneform_sdk/default_materials/fbx_material.sfm',
+    },
+    {
+      name: 'golden_deitalhes',
+      parameters: [
+        {
+          baseColor: [
+            0.30050300000000002,
+            0.150004,
+            0.036750999999999999,
+            1,
+          ],
+        },
+        {
+          baseColorMap: null,
+        },
+        {
+          normalMap: null,
+        },
+        {
+          interpolatedColor: null,
+        },
+        {
+          metallic: 0,
+        },
+        {
+          metallicMap: null,
+        },
+        {
+          roughness: 1,
+        },
+        {
+          roughnessMap: null,
+        },
+        {
+          opacity: null,
+        },
+      ],
+      source: 'build/sceneform_sdk/default_materials/fbx_material.sfm',
+    },
+  ],
+  model: {
+    attributes: [
+      'Position',
+      'TexCoord',
+      'Orientation',
+      'BoneIndices',
+      'BoneWeights',
+    ],
+    collision: {},
+    file: 'sampledata/models/sunglasses_model.fbx',
+    name: 'sunglasses_model',
+    recenter: 'root',
+  },
+  version: '0.54:2',
+}
