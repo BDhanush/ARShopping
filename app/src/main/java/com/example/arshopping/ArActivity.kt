@@ -1,11 +1,13 @@
 package com.example.arshopping
 
-import android.graphics.Bitmap
+import android.graphics.*
 import android.media.Image
 import android.os.Bundle
+import android.util.Log
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
+import com.example.arshopping.GestureRecognizerHelper.Companion.TAG
 import com.google.ar.core.AugmentedFace
 import com.google.ar.core.Frame
 import com.google.ar.core.TrackingState
@@ -16,11 +18,13 @@ import com.google.ar.sceneform.rendering.Texture
 import com.google.ar.sceneform.ux.ArFragment
 import com.google.ar.sceneform.ux.AugmentedFaceNode
 import com.google.mediapipe.tasks.vision.core.RunningMode
+import java.io.ByteArrayOutputStream
 import java.util.concurrent.CompletableFuture
-import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import java.util.concurrent.ScheduledExecutorService
 
-class ArActivity : AppCompatActivity(),GestureRecognizerHelper.GestureRecognizerListener {
+
+class ArActivity : AppCompatActivity(){
     private lateinit var  arFragment: ArFragment
     private var faceRenderable:ModelRenderable?=null
     private var faceTexture:Texture?=null
@@ -29,7 +33,8 @@ class ArActivity : AppCompatActivity(),GestureRecognizerHelper.GestureRecognizer
     private val faceNodeMap = HashMap<AugmentedFace,AugmentedFaceNode>()
 
 
-    private lateinit var backgroundExecutor: ExecutorService
+    private lateinit var backgroundExecutor: ScheduledExecutorService
+
     private lateinit var gestureRecognizerHelper: GestureRecognizerHelper
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -43,24 +48,27 @@ class ArActivity : AppCompatActivity(),GestureRecognizerHelper.GestureRecognizer
         loadModel()
 
         arFragment.arSceneView.cameraStreamRenderPriority = Renderable.RENDER_PRIORITY_FIRST
+
+        backgroundExecutor = Executors.newSingleThreadScheduledExecutor()
+        backgroundExecutor.execute {
+            gestureRecognizerHelper = GestureRecognizerHelper(
+                context = this,
+                runningMode = RunningMode.IMAGE
+            )
+        }
+        var count=0
         arFragment.arSceneView.scene.addOnUpdateListener {
             if(faceRenderable != null /*&& faceTexture != null*/) {
                 addTrackedFaces()
                 removeUntrackedFaces()
             }
             val frame = arFragment.arSceneView.arFrame
-            if (frame != null && frame.camera.trackingState == TrackingState.TRACKING) {
+            if (frame != null) {
                 // Process the AR frame
+                count++
+                Log.i("count",count.toString())
                 processFrame(frame)
             }
-        }
-        backgroundExecutor = Executors.newSingleThreadExecutor()
-        backgroundExecutor.execute {
-            gestureRecognizerHelper = GestureRecognizerHelper(
-                context = applicationContext,
-                runningMode = RunningMode.IMAGE,
-                gestureRecognizerListener = this
-            )
         }
 
 
@@ -77,52 +85,91 @@ class ArActivity : AppCompatActivity(),GestureRecognizerHelper.GestureRecognizer
             // Convert the Bitmap to an MPImage
 //            val mpImage = BitmapImageBuilder(bitmap).build()
 
-            // Run the gesture recognizer on the MPImage
-            gestureRecognizerHelper.recognizeImage(bitmap)
+            if(bitmap!=null) {
 
-            // Close the image to avoid memory leaks
+                gestureRecognizerHelper.recognizeImage(bitmap)
+                    ?.let { resultBundle ->
+                        runOnUiThread {
+
+                            // This will return an empty list if there are no gestures detected
+                            if(resultBundle.results.first().gestures().isNotEmpty()) {
+//                                Toast.makeText(
+//                                    this,
+//                                    resultBundle.results.first().gestures().first().first().categoryName(),
+//                                    Toast.LENGTH_LONG
+//                            ).show()
+                                Log.i(
+                                    "check gesture", resultBundle.results.first().gestures().first().first().categoryName()
+                                )
+                            } else {
+//                                Toast.makeText(
+//                                    this,
+//                                    "Hands not detected",
+//                                    Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    } ?: run {
+                    Log.e(
+                        TAG, "Error running gesture recognizer."
+                    )
+                }
+
+//                gestureRecognizerHelper.clearGestureRecognizer()
+            }
             image.close()
         } catch (e: NotYetAvailableException) {
             // Handle the case where the image is not available yet
         }
     }
 
-    private fun convertImageToBitmap(image: Image): Bitmap {
-        val buffer = image.planes[0].buffer
-        val pixelStride = image.planes[0].pixelStride
-        val rowStride = image.planes[0].rowStride
-        val rowPadding = rowStride - pixelStride * image.width
+    private fun convertImageToBitmap(image: Image): Bitmap? {
+        val width = image.width
+        val height = image.height
 
-        val bitmap = Bitmap.createBitmap(
-            image.width + rowPadding / pixelStride,
-            image.height,
-            Bitmap.Config.ARGB_8888
-        )
-        bitmap.copyPixelsFromBuffer(buffer)
+        val planes = image.planes
+        val yBuffer = planes[0].buffer
+        val uBuffer = planes[1].buffer
+        val vBuffer = planes[2].buffer
 
-        return bitmap
+        val ySize = yBuffer.remaining()
+        val uSize = uBuffer.remaining()
+        val vSize = vBuffer.remaining()
+
+        val nv21 = ByteArray(ySize + uSize + vSize)
+
+
+        // U and V are swapped
+        yBuffer[nv21, 0, ySize]
+        vBuffer[nv21, ySize, vSize]
+        uBuffer[nv21, ySize + vSize, uSize]
+
+        val yuvImage = YuvImage(nv21, ImageFormat.NV21, width, height, null)
+        val out = ByteArrayOutputStream()
+        yuvImage.compressToJpeg(Rect(0, 0, width, height), 100, out)
+        val imageBytes = out.toByteArray()
+        return BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
     }
 
-    override fun onError(error: String, errorCode: Int) {
-        runOnUiThread {
-            Toast.makeText(this, "Error: $error", Toast.LENGTH_SHORT).show()
-        }
-        backgroundExecutor.execute {
-            gestureRecognizerHelper.clearGestureRecognizer()
-            gestureRecognizerHelper.setupGestureRecognizer()
-        }
-    }
+//    override fun onError(error: String, errorCode: Int) {
+//        runOnUiThread {
+//            Toast.makeText(this, "Error: $error", Toast.LENGTH_SHORT).show()
+//        }
+//        backgroundExecutor.execute {
+//            gestureRecognizerHelper.clearGestureRecognizer()
+//            gestureRecognizerHelper.setupGestureRecognizer()
+//        }
+//    }
 
-    override fun onResults(resultBundle: GestureRecognizerHelper.ResultBundle) {
-        runOnUiThread {
-            val resultText = resultBundle.results.joinToString { it.toString() }
-            Toast.makeText(this, "Gesture: $resultText", Toast.LENGTH_SHORT).show()
-        }
-        backgroundExecutor.execute {
-            gestureRecognizerHelper.clearGestureRecognizer()
-            gestureRecognizerHelper.setupGestureRecognizer()
-        }
-    }
+//    override fun onResults(resultBundle: GestureRecognizerHelper.ResultBundle) {
+//        runOnUiThread {
+//            val resultText = resultBundle.results.joinToString { it.toString() }
+//            Toast.makeText(this, "Gesture: $resultText", Toast.LENGTH_SHORT).show()
+//        }
+//        backgroundExecutor.execute {
+//            gestureRecognizerHelper.clearGestureRecognizer()
+//            gestureRecognizerHelper.setupGestureRecognizer()
+//        }
+//    }
 
     private fun addTrackedFaces() {
         val session = arFragment.arSceneView.session ?: return

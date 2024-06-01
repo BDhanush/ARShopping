@@ -76,8 +76,8 @@ class GestureRecognizerHelper(
                     .setErrorListener(this::returnLivestreamError)
             }
             val options = optionsBuilder.build()
-            Log.d(TAG, "Base Options: " + baseOptions.toString());
-            Log.d(TAG, "Gesture Recognition Options: " + options.toString());
+//            Log.d(TAG, "Base Options: " + baseOptions.toString());
+//            Log.d(TAG, "Gesture Recognition Options: " + options.toString());
             gestureRecognizer =
                 GestureRecognizer.createFromOptions(context, options)
         } catch (e: IllegalStateException) {
