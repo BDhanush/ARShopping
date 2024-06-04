@@ -16,7 +16,7 @@ import java.util.concurrent.CompletableFuture
 class ArActivity : AppCompatActivity() {
     private lateinit var  arFragment: ArFragment
     private var faceRenderable:ModelRenderable?=null
-    private var faceTexture:Texture?=null
+    private var faceTexture: Texture?=null
     private var curIndex:Int=0
 
     private val faceNodeMap = HashMap<AugmentedFace,AugmentedFaceNode>()

@@ -18,6 +18,20 @@ sceneform.asset (
         'src/main/res/raw/glasses_model'
 )
 
+sceneform.asset (
+        'sampledata/models/funkyglasses_model.fbx',
+        'default',
+        'sampledata/models/funkyglasses_model.sfa',
+        'src/main/res/raw/funkyglasses_model'
+)
+
+sceneform.asset (
+        'sampledata/models/example.fbx',
+        'default',
+        'sampledata/models/example.sfa',
+        'src/main/res/raw/example'
+)
+
 android {
     namespace 'com.example.arshopping'
     compileSdk 34
